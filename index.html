@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ডকুমেন্ট</title>
+<style>
+  :root { --bg:#f6f7f9; --card:#fff; --text:#1d2330; --muted:#5b6475; --accent:#1e6b52; --line:#dde1e8; }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg:#14171c; --card:#1d2128; --text:#eef0f4; --muted:#a0a8b8; --accent:#4cc39a; --line:#2d333d; }
+  }
+  * { box-sizing:border-box; }
+  body { margin:0; font-family:system-ui, "Noto Sans Bengali", sans-serif; background:var(--bg); color:var(--text); }
+  header { padding:20px 16px; text-align:center; border-bottom:1px solid var(--line); background:var(--card); }
+  header h1 { margin:0; font-size:1.3rem; }
+  main { max-width:900px; margin:0 auto; padding:16px; }
+  .list a { display:block; padding:14px 16px; margin-bottom:10px; background:var(--card); border:1px solid var(--line);
+            border-radius:10px; color:var(--text); text-decoration:none; }
+  .list a:hover { border-color:var(--accent); }
+  .bar { display:flex; gap:10px; flex-wrap:wrap; margin-bottom:12px; }
+  button, .btn { background:var(--accent); color:#fff; border:0; padding:10px 18px; border-radius:8px; font-size:1rem; cursor:pointer; text-decoration:none; }
+  .btn.alt { background:transparent; color:var(--accent); border:1px solid var(--accent); }
+  iframe { width:100%; height:75vh; border:1px solid var(--line); border-radius:8px; background:#fff; }
+  .qr { text-align:center; margin-top:18px; padding:16px; background:var(--card); border:1px solid var(--line); border-radius:10px; }
+  #qrcode { display:inline-block; background:#fff; padding:10px; border-radius:6px; }
+  .muted { color:var(--muted); font-size:.9rem; }
+  @media print { header, .bar, .qr, .muted { display:none; } iframe { height:100vh; border:0; } }
+</style>
+</head>
+<body>
+<header><h1 id="siteTitle">ভাই ভাই হাঁসের খামার – ডকুমেন্ট</h1></header>
+<main id="app"></main>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<script>
+const app = document.getElementById('app');
+const params = new URLSearchParams(location.search);
+const file = params.get('f');
+
+function esc(s){ return s.replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+
+// শুধু documents/ ফোল্ডারের .pdf ফাইল দেখানো হবে
+function safeName(n){ return /^[\w\-. \u0980-\u09FF()]+\.pdf$/i.test(n) && !n.includes('..'); }
+
+async function showList(){
+  try {
+    const res = await fetch('documents.json', {cache:'no-store'});
+    const docs = await res.json();
+    app.innerHTML = '<div class="list">' + docs.map(d =>
+      `<a href="?f=${encodeURIComponent(d.file)}">${esc(d.title)}</a>`).join('') + '</div>';
+  } catch(e) {
+    app.innerHTML = '<p class="muted">documents.json পাওয়া যায়নি।</p>';
+  }
+}
+
+function showDoc(){
+  if(!safeName(file)){ app.innerHTML = '<p>ফাইলটি পাওয়া যায়নি।</p>'; return; }
+  const src = 'documents/' + encodeURIComponent(file);
+  document.title = file.replace(/\.pdf$/i,'');
+  app.innerHTML = `
+    <div class="bar">
+      <button id="printBtn">🖨️ প্রিন্ট</button>
+      <a class="btn alt" href="${src}" download>ডাউনলোড</a>
+      <a class="btn alt" href="./">সব ডকুমেন্ট</a>
+    </div>
+    <iframe id="pdf" src="${src}" title="PDF"></iframe>
+    <div class="qr">
+      <div id="qrcode"></div>
+      <p class="muted">এই QR কোড স্ক্যান করলে ডকুমেন্টটি খুলবে</p>
+    </div>`;
+  new QRCode(document.getElementById('qrcode'), {text: location.href, width:180, height:180});
+  document.getElementById('printBtn').onclick = () => {
+    try { document.getElementById('pdf').contentWindow.print(); }
+    catch(e) { window.open(src, '_blank'); }
+  };
+}
+
+file ? showDoc() : showList();
+</script>
+</body>
+</html>
